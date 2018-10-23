@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" >
+  <head>
+    <meta charset="utf-8">
+    <title>IOCHAT</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery.form/3.51/jquery.form.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style media="screen">
+      body{
+        margin-top: 30px;
+      }
+        .c{
+          float: right;
+          margin-top: 19px;
+        }
+        .d{
+          float: right;
+              margin-top: 29px;
+        }
+      #messageArea{
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+        <div class="container">
+          <div id="userFormArea"class="row">
+            <div class="col-md-12">
+              <form id="userForm">
+                <div class="form-group">
+                  <label>Enter Username:</label>
+                  <input class="form-control" id="username">
+                  <br>
+                  <input type="submit" class="btn btn-primary" value="Login" />
+                </div>
+              </form>
+            </div>
+          </div>
+          <div id="messageArea" class="row">
+            <div class="col-md-4">
+              <div class="well">
+                <h3>Online users</h3>
+                <ul class="list-group" id="users"></ul>
+              </div>
+            </div>
+            <div class="col-md-8">
+
+
+              <div class="chat" id="chat"></div>
+
+                <form id="messageForm">
+                  <div class="form-group">
+                    <label>Enter message:</label>
+                    <textarea class="form-control" id="message" ></textarea>
+                    <!-- Button trigger modal -->
+                        <button type="button" class="btn btn-primary c" data-toggle="modal" data-target="#basicExampleModal">
+                        <i style="font-size:24px" class="fa">&#xf0f6;</i>
+                        </button>
+                    <br>
+                    <input type="submit" class="btn btn-primary" value="Send message" />
+                  </div>
+                </form>
+            </div>
+          </div>
+        </div>
+        <!-- Modal -->
+                  <div class="modal fade" id="basicExampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                  <div class="modal-dialog" role="document">
+                  <div class="modal-content">
+                  <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Select your file...</h5>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                  </div>
+                        <div class="modal-body">
+                                <form id="uploadForm"
+                                    enctype="multipart/form-data"
+                                    action="/api/photo"
+                                    method="post">
+                                <input type="file" name="userPhoto" class="btn btn-primary"/>
+                                <input type="submit" value="Upload" class="btn btn-success d"name="submit">
+                                <span id = "status"></span>
+                              </form>
+
+                        </div>
+                  <div class="modal-footer">
+                                <button type="button" class="btn btn-default" id="btnGetFiles">Files</button>
+                                <div class="col-sm-offset-2" id="listFiles">
+                                </div>
+                  </div>
+                  </div>
+                  </div>
+                  </div>
+        <script>
+        $( document ).ready( () => {
+	
+	var url = window.location;
+	
+	// GET REQUEST
+	$("#btnGetFiles").click( (event) => {
+		event.preventDefault();
+		ajaxGet();
+	});
+	
+	// DO GET
+	function ajaxGet(){
+		$.ajax({
+			type : "GET",
+			url : "/api/photo",
+			success: (data) => {
+				//clear old data
+				$("#listFiles").html("");
+				
+				/*
+					render list of files
+				*/
+				$("#listFiles").append('<ul>');
+				$.each(data, (index, filename) => {
+					
+					$("#listFiles").append('<li><a href=' + url + 'api/files/' + filename +'>' + filename + '</a></li>');
+				});
+				$("#listFiles").append('</ul>');
+			},
+			error : (err) => {
+				$("#listFiles").html(err.responseText);
+			}
+		});	
+	}
+})
+</script>
+
+
+        <script>
+
+              $(function() {
+                var socket = io.connect();
+                var $messageForm = $('#messageForm');
+                var $message = $('#message');
+                var $chat = $('#chat');
+                var $messageArea = $('#messageArea');
+                var $userFormArea = $('#userFormArea');
+                var $userForm = $('#userForm');
+                var $users = $('#users');
+                var $username = $('#username');
+
+
+                $messageForm.submit(function(e){
+                  e.preventDefault();
+                  socket.emit('send message', $message.val());
+                  $message.val('');
+                });
+                socket.on('new message', function(data){
+                  $chat.append('<div class="well"><strong>'+data.user+'</strong>:'+data.msg+'</div>');
+                });
+
+                $userForm.submit(function(e){
+                  e.preventDefault();
+                  socket.emit('new user', $username.val(), function(data) {
+                    if(data){
+                      $userFormArea.hide();
+                      $messageArea.show();
+                    }
+                  });
+                  $username.val('');
+                });
+
+                socket.on('get users', function(data){
+                  var html = ' ';
+                  for(i = 0;i < data.length;i++){
+                    html += '<li class="list-group-item">'+data[i]+'</li>';
+                  }
+                  $users.html(html);
+                });
+
+
+
+
+
+              });
+
+        </script>
+  </body>
+  <script>
+  $(document).ready(function() {
+
+     $('#uploadForm').submit(function() {
+     $("#status").empty().text("File is uploading...");
+
+        $(this).ajaxSubmit({
+
+            error: function(xhr) {
+                status('Error: ' + xhr.status);
+            },
+
+            success: function(response) {
+          console.log(response)
+          $("#status").empty().text(response);
+            }
+  });
+
+  return false;
+    });
+});
+  </script>
+</html>
